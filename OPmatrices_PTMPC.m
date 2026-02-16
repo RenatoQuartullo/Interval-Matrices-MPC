@@ -33,7 +33,7 @@ function [Hineq,gineq,galpha0,Heq,geq,Qqp] = OPmatrices_PTMPC(N, H, Hc, V, B, G,
     end
     gdyn = zeros(nv*N*nvert,1);
 
-    % Terminal constraint TO MODIFY
+    % Terminal constraint 
     Heq = sparse(nv,lenSol);
     Heq(:,nv*N+1:nv*(N+1)) = eye(nv);
     geq = sparse(alpha_N);

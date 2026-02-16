@@ -2,6 +2,9 @@ clear
 clc
 close all
 
+addpath data
+addpath tools
+
 % System (Fertility and survivance) parameters
 n = 6;
 f = [0.01 0.45 0.4 0.14 0 0];
@@ -11,22 +14,23 @@ Ahat(n,n) = 0.2;
 Bhat = eye(n);
 Bhat = Bhat(:,[2 3 4 5]);
 [~,m] = size(Bhat);
-xref = [1 1 1 1 1 1]';                              % state and input will be relative to refernce state and input
+xref = [1 1 1 1 1 1]';
 uref = pinv(Bhat)*(eye(n)-Ahat)*xref;
-summax = 6.1-sum(xref);
-summin = sum(-xref);
+xmax = 1.5*[1 1 1 1 1 1]';
 umax = [0.35 0.35 0.3 0.25]'-uref;
-umin = -uref;
-Nmax = 10;  
-Kmax = 2*Nmax;
+Nmax = 10;                                             
+Kmax = Nmax;                                          
+x0 = [0 0 0 0 0 0]'-xref;
 gamma = 1;
+Q = eye(n);
+R = eye(m);
 nrun = 50;
-x0 = zeros(n,1)-xref;
 
 % Uncertainty
 Delta = zeros(n,n+m);
 Delta(1,1:n) = 0.08*f;
 Delta(2:n,1:n) = 0.03*Ahat(2:end,1:end);
+Delta(:,n+1:end) = 0.01*Bhat;
 
 % Calculate vertices
 IS = intervalMatrix([Ahat Bhat],Delta);     % IS: interval matrix set for system matrices
@@ -40,16 +44,16 @@ K = -place(Ahat,Bhat,[0.3 0.3 0.3 0.3 0.2 0.2]);
 % Compute vertices of A+BK
 ABK_vertices = pagemtimes(IS_vertices,[eye(n); K]);
 AKhat = Ahat + Bhat*K;
-% if ~CheckLMI(VertABK)
+% if ~CheckLMI(ABK_vertices)               % Uncomment to verify LMI (CVX)
 %     disp('K not satisfying LMI')
-%     break
+%     return
 % end
 
 % State/input constraints
-F1 = [ones(1,n); -ones(1,n)];
+F1 = [eye(n); -eye(n)];
 G1 = [eye(m); -eye(m)];
-f1 = [summax; -summin];
-g1 = [umax; -umin];
+f1 = [xmax; xmax];
+g1 = [umax; umax];
 F = [F1; zeros(size(G1,1),n)];
 G = [zeros(size(F1,1),m); G1];
 h = [f1; g1];
@@ -65,7 +69,7 @@ end
 % Compute terminal set (low-complexity) 
 [W,~] = schur(AKhat,'real');
 V = inv(W);
-alpha_N = FindAlphaRPIParallelotope(ABK_vertices,V,W,F,G,K,h,'non-symmetric');
+alpha_N = FindAlphaRPIParallelotope(ABK_vertices,V,W,F,G,K,h,'symmetric');
 if any(isnan(alpha_N))
     disp('alpha_N not found')
     return
@@ -122,27 +126,28 @@ end
 %% PLOT
 % To see paper results --> load data/population_different_AB.mat
 figure
-subplot(4,2,[1 2 3 4])
+subplot(3,2,1)
 hold on
-plot(0:Kmax,sum(xref)*ones(1,Kmax+1),'--k')
-for i = 1:nrun
-    plot(0:Kmax,sum(x(:,:,i))+sum(xref),'b')
-end
-plot(0:Kmax,(summax+sum(xref))*ones(1,Kmax+1),'--g')
+plot(0:Kmax,squeeze(x(1,:,:)),'b')
+plot(0:Kmax,xmax(1)*ones(1,Kmax+1),'--g')
 xlim([0 Kmax])
-ylim([0 6.5])
-ylabel('$y(k) = \sum_{i=1}^n x_i(k)$','Interpreter','latex')
+ylabel('$x_1(k)$','Interpreter','latex')
+box on
+subplot(3,2,2)
+hold on
+plot(0:Kmax,squeeze(x(6,:,:)),'b')
+plot(0:Kmax,xmax(6)*ones(1,Kmax+1),'--g')
+xlim([0 Kmax])
+ylabel('$x_6(k)$','Interpreter','latex')
 box on
 for i = 1:m
-    subplot(4,2,i+4)
+    subplot(3,2,i+2)
     hold on
-    for j = 1:nrun   
-        stairs(u(i,:,j)+uref(i),'b')
-    end
-    plot(uref(i)*ones(1,Kmax),'--k')
-    plot((umax(i)+uref(i))*ones(1,Kmax),'--g')
-    plot((umin(i)+uref(i))*ones(1,Kmax),'--g')
-    ylim([-0.02 1.1*(umax(i)+uref(i))])
+    stairs(0:Kmax-1,squeeze(u(i,:,:)),'b')
+    plot(-umax(i)*ones(1,Kmax),'--g')
+    plot(umax(i)*ones(1,Kmax),'--g')
+%     ylim([-1.1*umax(i) 1.1*umax(i)])
+    ylim([-0.05 1.1*umax(i)])
     xlim([0 Kmax-1])
     if i>2
         xlabel('$k$','Interpreter','latex')
@@ -150,5 +155,3 @@ for i = 1:m
     ylabel(['$u_',num2str(i),'(k)$'],'Interpreter','latex')
     box on
 end
-
-

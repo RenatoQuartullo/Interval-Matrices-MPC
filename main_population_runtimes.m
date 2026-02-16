@@ -3,6 +3,7 @@ clear
 close all
 
 addpath tools
+addpath data
 
 % System (Fertility and survivance) parameters
 n = 6;
@@ -13,13 +14,11 @@ Ahat(n,n) = 0.2;
 Bhat = eye(n);
 Bhat = Bhat(:,[2 3 4 5]);
 [~,m] = size(Bhat);
-xref = [1 1 1 1 1 1]';                              % state and input will be relative to refernce state and input
+xref = [1 1 1 1 1 1]';
 uref = pinv(Bhat)*(eye(n)-Ahat)*xref;
-summax = 6.1-sum(xref);
-summin = sum(-xref);
+xmax = 1.5*[1 1 1 1 1 1]';
 umax = [0.35 0.35 0.3 0.25]'-uref;
-umin = -uref;
-Nmax = 10;                                
+Nmax = 10;                                                       
 gamma = 1;
 Q = eye(n);
 R = eye(m);
@@ -29,13 +28,14 @@ N_PTMPC = 10;
 DeltaAll = zeros(n,n+m);
 DeltaAll(1,1:n) = 0.08*f;
 DeltaAll(2:n,1:n) = 0.03*Ahat(2:end,1:end);
+DeltaAll(:,n+1:end) = 0.01*Bhat;
 Delta = zeros(n,n+m);
 
 % State/input constraints
-F1 = [ones(1,n); -ones(1,n)];
+F1 = [eye(n); -eye(n)];
 G1 = [eye(m); -eye(m)];
-f1 = [summax; -summin];
-g1 = [umax; -umin];
+f1 = [xmax; xmax];
+g1 = [umax; umax];
 F = [F1; zeros(size(G1,1),n)];
 G = [zeros(size(F1,1),m); G1];
 h = [f1; g1];
@@ -50,8 +50,8 @@ end
 
 %% Monte Carlo for increasing vertices number and for multiple initial conditions
 nx0 = 10;
-x0 = rand(n,nx0) - xref;
-posRand_not0 = find(Ahat ~= 0);
+x0 = repmat((-1:0.1:1),[n,1]);
+posRand_not0 = find(DeltaAll ~= 0);
 n_unc = length(posRand_not0);
 toc_PTMPC = nan(n_unc,nx0);
 toc_IMMPC = nan(n_unc,nx0);
@@ -97,7 +97,7 @@ for iu = 1:n_unc
     Xf.A = [V;-V];
     Xf.b = [alpha_N(1:n); alpha_N(n+1:end)];  
 
-    %% PT-MPC (low complexity - parallelotopic shape)
+    %% PT-MPC (low complexity - parallelotopic shape) -> quadprog of MOSEK SUGGESTED
     
     % Terminal weight
     E = [eye(m), zeros(m,(N_PTMPC-1)*m)];
@@ -129,7 +129,7 @@ for iu = 1:n_unc
         x_PTMPC = x0(:,ix);
         gineq_PTMPC_k = [gineq_PTMPC; V*x0(:,ix); -V*x0(:,ix)];
         tic_PTMPC = tic;
-        [~,~,flag_PTMPC] = quadprog((Qqp_PTMPC+Qqp_PTMPC')/2,[],Hineq_PTMPC,gineq_PTMPC_k,Heq_PTMPC,geq_PTMPC,[],[],[],oPt);
+        [~,~,flag_PTMPC] = quadprog((Qqp_PTMPC+Qqp_PTMPC')/2,zeros(size(Qqp_PTMPC,2),1),Hineq_PTMPC,gineq_PTMPC_k,Heq_PTMPC,geq_PTMPC,[],[],[],oPt);
         toc_PTMPC(iu,ix) = toc(tic_PTMPC);
         if flag_PTMPC ~= 1
             disp('infeasible PT-MPC')
@@ -170,8 +170,20 @@ plot(1:n_unc, mean(toc_PTMPC,2),'-s','Color',rgb('Crimson'),'LineWidth',1.5)
 load data/population_runtimes_SLSMPC.mat
 plot(1:n_unc, toc_SLSMPC,'-s','Color',rgb('SeaGreen'),'LineWidth',1.5)
 xlabel('Number  of uncertain entries of $A$','Interpreter','latex')
-xlim([1 10])
+xlim([1 n_unc])
 ylabel('Average CPU time [s]', 'Interpreter','latex')
+grid on
+legend('IM-MPC','SLS-MPC','PT-MPC', 'Interpreter','latex')
+box on
+
+figure
+hold on
+plot(1:n_unc, n_ineq(:,end)+n_eq(:,end),'-*','LineWidth',1.5)
+plot(1:n_unc, ncostr_SLSMPC,'-s','Color',rgb('SeaGreen'),'LineWidth',1.5)
+plot(1:n_unc, n_ineq_PTMPC+n_eq_PTMPC,'-s','Color',rgb('Crimson'),'LineWidth',1.5)
+xlabel('Number  of uncertain entries of $[A \quad B]$','Interpreter','latex')
+xlim([1 n_unc])
+ylabel('Numeber of constraints', 'Interpreter','latex')
 grid on
 legend('IM-MPC','SLS-MPC','PT-MPC', 'Interpreter','latex')
 box on

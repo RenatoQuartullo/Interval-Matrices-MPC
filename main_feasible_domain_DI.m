@@ -45,7 +45,7 @@ A_vertices = IS_vertices(:,1:n,:);
 B_vertices = IS_vertices(:,1+n:end,:);
 
 % Calculate K
-% K = KStableVertices(VertAM, VertBM);
+% K = KStableVertices(VertAM, VertBM);      % Uncomment if CVX is available
 K = [-0.47 -1.48];
 ABK_vertices = pagemtimes(IS_vertices,[eye(n);K]);
 AKhat = Ahat + Bhat*K;
@@ -73,7 +73,7 @@ IDelta = intervalMatrix(zeros(n,m+n),Delta);
 IDK = IS*[eye(n); K];
 [Bc,Bsup,BKc,BKsup] = PreComputeIntervalMatrices(IDK,IDelta,K,Nmax);
 for i = 1:Nmax
-    [Hineq{i},gineq{i},Heq{i},geq{i},geqDyn{i},cJ{i},LB{i},UB{i}] = OPmatrices(Ahat, Bhat, i, Bc, Bsup, BKc, BKsup, X, U, Xf, K, 'LP');
+    [Hineq{i},gineq{i},Heq{i},geq{i},geqDyn{i},cJ{i},LB{i},UB{i}] = OPmatrices(Ahat, Bhat, i, Bc, Bsup, BKc, BKsup, X, U, Xf, K, 'QP');
 end
 
 % Calculate feasible domain 
@@ -85,7 +85,7 @@ for i = 1:nx0
 
     % Solve IM-MPC problem
     tic_OP = tic;
-    [sol,JN] = SolveIMMPC(x0(:,i), Nmax, Hineq, gineq, Heq, geq, geqDyn, cJ, LB, UB, gamma, 'LP', oPt);
+    [sol,JN] = SolveIMMPC(x0(:,i), Nmax, Hineq, gineq, Heq, geq, geqDyn, cJ, LB, UB, gamma, 'QP', oPt);
     toc_IMMPC(i) = toc(tic_OP);
     [~,N(i)] = min(JN);
 
@@ -130,8 +130,7 @@ for i = 1:nx0
         % Solve PT-MPC problem
         gineqPTMPC_k = [galpha0PTMPC{j}*x0(:,i); gineqPTMPC{j}];
         tic_PTMPC = tic;
-%         [~,~,flag] = quadprog(QqpPTMPC{j}, [], HineqPTMPC{j}, gineqPTMPC_k, HeqPTMPC{j}, geqPTMPC{j},[],[],[],oPt);
-        [~,~,flag] = linprog([], HineqPTMPC{j}, gineqPTMPC_k, HeqPTMPC{j}, geqPTMPC{j},[],[],oPt);
+        [~,~,flag] = quadprog(QqpPTMPC{j}, [], HineqPTMPC{j}, gineqPTMPC_k, HeqPTMPC{j}, geqPTMPC{j},[],[],[],oPt);
         toc_PTMPC(i,j) = toc(tic_PTMPC);
 
         % Check initial feasibility
@@ -159,7 +158,6 @@ hold on
 load data/FD_SLSMPC.mat
 plot(FD_IMMPC, 'alpha',0.2, 'color','blue','EdgeColor','b')
 plot(FD_SLSMPC, 'alpha',0.2, 'color','green','LineStyle','--','EdgeColor','g')
-% plot(Polyhedron(Xf.A,Xf.b),'color','green')
 plot(FD_PTMPC, 'alpha',0.3, 'color','red','EdgeColor','r')
 load data/FD_OTMPC.mat
 plot(FD_OTMPC, 'alpha',0.5, 'color','yellow','LineStyle','--','EdgeColor','yellow')
