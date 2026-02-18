@@ -8,6 +8,8 @@ addpath data
 % import maximal robust invariant sets computed from [1]
 load 'data/RIS_coverage.mat'
 
+load data/K_cvx_results.mat
+
 % System
 Ahat = [1 0.15; 0.1 1];
 Bhat = [0.1; 1.1];
@@ -52,8 +54,8 @@ for ii = 1:length(delta_A)
     B_vertices = IS_vertices(:,1+n:end,:);
 
     % Calculate K
-%     K = KStableVertices(A_vertices,B_vertices);
-    K = -place(Ahat,Bhat,[0.1 0.3]);
+%     K = KStableVertices(A_vertices,B_vertices);       % Uncomment if cvx is available
+    K = Kall(ii,:);                                     % Comment if cvx is available
     ABK_vertices = pagemtimes(IS_vertices,[eye(n);K]);
     AKhat = Ahat + Bhat*K;
 
