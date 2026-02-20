@@ -16,7 +16,7 @@ Quartullo, R., Bianchini, G., Garulli, A., and Giannitrapani, A. (2026). *Robust
 
 - [Polytopic Tube MPC](https://link.springer.com/book/10.1007/978-3-319-24853-0) – implemented following **Chapter 5** of:
 
-  Kouvaritakis, B., and Cannon, M.. *Model Predictive Control*. Switzerland: Springer International Publishing, 2016, pp. 38.13–56.
+  Kouvaritakis, B., and Cannon, M. *Model Predictive Control*. Switzerland: Springer International Publishing, 2016, pp. 38.13–56.
 
 ## Other Baselines
 
