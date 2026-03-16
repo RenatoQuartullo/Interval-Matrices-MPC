@@ -2,7 +2,7 @@
 
 MATLAB code for implementing the Interval Matrices MPC technique proposed in this [paper](https://arxiv.org/abs/2602.17379):
 
-Quartullo, R., Bianchini, G., Garulli, A., and Giannitrapani, A. (2026). *Robust Model Predictive Control for Linear Systems with Interval Matrix Model Uncertainty*. arXiv e-prints, arXiv: 2602.17379.
+Quartullo, R., Garulli, A., and Leomanni, M. (2026). *Robust Model Predictive Control for Linear Systems with Interval Matrix Model Uncertainty*. arXiv e-prints, arXiv: 2602.17379.
 
 
 ## Required Toolboxes
