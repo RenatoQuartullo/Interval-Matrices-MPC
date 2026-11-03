@@ -45,8 +45,7 @@ A_vertices = IS_vertices(:,1:n,:);
 B_vertices = IS_vertices(:,1+n:end,:);
 
 % Calculate K
-% K = KStableVertices(VertAM, VertBM);      % Uncomment if CVX is available
-K = [-0.47 -1.48];
+K = KStableVertices(A_vertices, B_vertices);    
 ABK_vertices = pagemtimes(IS_vertices,[eye(n);K]);
 AKhat = Ahat + Bhat*K;
 
@@ -82,7 +81,7 @@ toc_IMMPC = zeros(nx0,1);
 feasibleX0 = true(nx0,1);
 oPt.Display = 'off';
 for i = 1:nx0
-
+    disp(i)
     % Solve IM-MPC problem
     tic_OP = tic;
     [sol,JN] = SolveIMMPC(x0(:,i), Nmax, Hineq, gineq, Heq, geq, geqDyn, cJ, LB, UB, gamma, 'QP', oPt);
@@ -96,7 +95,7 @@ for i = 1:nx0
 end
 
 x0feasible = x0(:,feasibleX0);
-FD_IMMPC = Polyhedron('V', x0feasible');          % Calculate feasible domain as convex hull of feeasible initial conditions
+FD_IMMPC = polytope(x0feasible);          % Calculate feasible domain as convex hull of feeasible initial conditions
 
 %% Polytopic Tube MPC (PT-IMPC)
 
@@ -145,7 +144,7 @@ for i = 1:nx0
 end
 feasICPTMPC = sum(feasibleX0PTMPC,2) > 0;
 x0feasiblePTMPC = x0(:,feasICPTMPC);
-FD_PTMPC = Polyhedron('V',x0feasiblePTMPC');
+FD_PTMPC = polytope(x0feasiblePTMPC);
 toc_PTMPC_Nmin = zeros(nx0,1);
 for i = 1:nx0
     toc_PTMPC_Nmin(i) = toc_PTMPC(i,NminFeasible(i));

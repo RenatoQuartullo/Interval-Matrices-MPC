@@ -49,7 +49,7 @@ for i = 1:Nmax+1
 end
 
 %% Monte Carlo for increasing vertices number and for multiple initial conditions
-nx0 = 10;
+nx0 = 20;
 x0 = repmat((-1:0.1:1),[n,1]);
 posRand_not0 = find(DeltaAll ~= 0);
 n_unc = length(posRand_not0);
@@ -81,7 +81,7 @@ for iu = 1:n_unc
     % Compute vertices of A+BK
     ABK_vertices = pagemtimes(IS_vertices,[eye(n); K]);
     AKhat = Ahat + Bhat*K;
-    % if ~CheckLMI(VertABK)
+    % if ~CheckLMI(ABK_vertices)
     %     disp('K not satisfying LMI')
     %     break
     % end
@@ -99,7 +99,7 @@ for iu = 1:n_unc
 
     %% PT-MPC (low complexity - parallelotopic shape) -> quadprog of MOSEK SUGGESTED
     
-    % Terminal weight
+    % % Terminal weight
     E = [eye(m), zeros(m,(N_PTMPC-1)*m)];
     M = [zeros(m*N_PTMPC,m), [eye(m*(N_PTMPC-1)); zeros(m,m*(N_PTMPC-1))]];
     Psi = [AKhat, Bhat*E; zeros(m*N_PTMPC,n) M];
@@ -136,7 +136,7 @@ for iu = 1:n_unc
             break
         end       
     end
-   
+
     
     %% IM-MPC
     ID = intervalMatrix(zeros(n,m+n),Delta);

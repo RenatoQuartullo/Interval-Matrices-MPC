@@ -5,10 +5,9 @@ close all
 addpath tools
 addpath data
 
-% import maximal robust invariant sets computed from [1]
-load 'data/RIS_coverage.mat'
-
-load data/K_cvx_results.mat
+% import maximal robust invariant sets computed from [1] and pre-saved gains K
+load 'data/RIS_coverage_CORA.mat'
+load data/K_presaved.mat
 
 % System
 Ahat = [1 0.15; 0.1 1];
@@ -39,7 +38,9 @@ G = [zeros(size(F1,1),m); G1];
 delta_A = 0.05:0.05:0.6;
 
 %% Begin calculating coverage
+feasibleN_IMMPC = nan(Nmax, 100, length(delta_A));
 coverage_IMMPC = zeros(length(delta_A),1);
+coverage_PTMPC_N1 = zeros(length(delta_A),1);           % NEW
 coverage_PTMPC_N3 = zeros(length(delta_A),1);
 coverage_PTMPC_N10 = zeros(length(delta_A),1);
 oPt.Display = 'off';
@@ -54,8 +55,8 @@ for ii = 1:length(delta_A)
     B_vertices = IS_vertices(:,1+n:end,:);
 
     % Calculate K
-%     K = KStableVertices(A_vertices,B_vertices);       % Uncomment if cvx is available
-    K = Kall(ii,:);                                     % Comment if cvx is available
+    % K = KStableVertices(A_vertices,B_vertices);         % Uncomment for recompute K
+    K = Kall(ii,:);                                     % Uncomment for pre-computed K
     ABK_vertices = pagemtimes(IS_vertices,[eye(n);K]);
     AKhat = Ahat + Bhat*K;
 
@@ -63,7 +64,7 @@ for ii = 1:length(delta_A)
     Xf = RIS{ii};
 
     % Gris initial conditions
-    x0 = RIS{ii}.grid(10)';
+    x0 = Grid_polytope(RIS{ii},10);
     nx0 = size(x0,2);
 
     %% IM-MPC
@@ -79,7 +80,8 @@ for ii = 1:length(delta_A)
         disp([num2str(ii), '    ' ,num2str(i)])
 
         % Solve IM-MPC problem
-        [sol,JN] = SolveIMMPC(x0(:,i), Nmax, Hineq, gineq, Heq, geq, geqDyn, cJ, LB, UB, gamma, 'LP', oPt);
+        [sol,JN] = SolveIMMPC(x0(:,i), Nmax, Hineq, gineq, Heq, geq, geqDyn, cJ, LB, UB, gamma, 'feasibility', oPt);
+        feasibleN_IMMPC(:,i,ii) = JN;
 
         % Check initial feasibility
         if min(JN) == inf
@@ -123,7 +125,23 @@ for ii = 1:length(delta_A)
         end
     end
     x0feasiblePTMPC = x0(:,feasibleX0PTMPC);
-    coverage_PTMPC_N3(ii) = size(x0feasiblePTMPC,2)/nx0;
+    coverage_PTMPC_N1(ii) = size(x0feasiblePTMPC,2)/nx0;
+
+    % N = 1
+    N_PTMPC = 1;
+    [Hineq_PTMPC,gineq_PTMPC,galpha0_PTMPC,Heq_PTMPC,geq_PTMPC] = OPmatrices_PTMPC(N_PTMPC, H, Hc, Xf.A, B_vertices, G, [], Xf.b);
+    feasibleX0PTMPC = true(nx0,1);
+    for i = 1:nx0
+
+        % Solve PT-MPC problem
+        gineq_k = [galpha0_PTMPC*x0(:,i); gineq_PTMPC];
+        solPTMPC = linprog([],Hineq_PTMPC,gineq_k,Heq_PTMPC,geq_PTMPC,[],[],oPt);
+        if isempty(solPTMPC)
+            feasibleX0PTMPC(i) = false;
+        end
+    end
+    x0feasiblePTMPC = x0(:,feasibleX0PTMPC);
+    coverage_PTMPC_N1(ii) = size(x0feasiblePTMPC,2)/nx0;
 
 end
 % save('data/coverage.mat','coverage_PTMPC_N3','coverage_PTMPC_N10','delta_A','coverage_IMMPC')
@@ -135,16 +153,26 @@ figure
 plot(delta_A,coverage_IMMPC,'-*','LineWidth',1.5,'MarkerSize',10)
 hold on
 load data/coverage_SLSMPC.mat
+% plot(delta_A,coverage_SLSMPC_N1,'s-.','Color',rgb('Crimson'),'LineWidth',1.5)
 plot(delta_A,coverage_SLSMPC_N3,'s-','Color',rgb('SeaGreen'),'LineWidth',1.5)
 plot(delta_A,coverage_SLSMPC_N10,'s--','Color',rgb('SeaGreen'),'LineWidth',1.5)
 load data/coverage_OTMPC.mat
-plot(delta_A,coverage_OTMPC,'s-','Color',rgb('Gold'),'LineWidth',1.5)
+% plot(delta_A,coverage_OTMPC_N1,'s-.','Color',rgb('Crimson'),'LineWidth',1.5)
+plot(delta_A,coverage_OTMPC_N3,'s-','Color',rgb('Gold'),'LineWidth',1.5)
+% plot(delta_A,coverage_PTMPC_N1,'s-.','Color',rgb('Crimson'),'LineWidth',1.5)
 plot(delta_A,coverage_PTMPC_N3,'s-','Color',rgb('Crimson'),'LineWidth',1.5)
 plot(delta_A,coverage_PTMPC_N10,'s--','Color',rgb('Crimson'),'LineWidth',1.5)
 legend('IM-MPC','SLS-MPC (N=3)','SLS-MPC (N=10)','OT-MPC (N=3)','PT-MPC (N = 3)','PT-MPC (N = 10)','interpreter','latex')
+% legend('IM-MPC','SLS-MPC (N=1)','SLS-MPC (N=3)','SLS-MPC (N=10)','OT-MPC (N=1)','OT-MPC (N=3)','PT-MPC (N = 1)','PT-MPC (N = 3)','PT-MPC (N = 10)','interpreter','latex')
 xlabel('$\delta$','Interpreter','latex')
 xlim([delta_A(1) delta_A(end)])
 grid on
+
+% Analyze feasible N for IMMPC
+for ii = 1:length(delta_A)
+    maxN(ii,:) = max(feasibleN_IMMPC(:,:,ii) .* (isfinite(feasibleN_IMMPC(:,:,ii))), [], 1);
+end
+mean(maxN, 2, 'omitnan')
 
 % [1] S. Chen, V. M. Preciado, M. Morari, and N. Matni, "Robust model predictive control with polytopic model
 % uncertainty through system level synthesis," Automatica, vol. 162, p. 111431, 2024.
