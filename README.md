@@ -11,8 +11,8 @@ Quartullo, R., Garulli, A., and Leomanni, M. (2026). *Robust Model Predictive Co
 
 ## Recommended Solver
 
-- [Mosek](https://www.mosek.com/) - The runtime evaluation in the paper has been performed using Mosek. However, the code runs also without it. In the case the user does not have a Mosek licence, quadprog will refer to the MATLAB embedded function (without any modification)
-
+- [Mosek](https://www.mosek.com/) - The runtime evaluations reported in the paper were performed using MOSEK. However, the code can also run without a MOSEK license. In this case, `quadprog` defaults to the built-in MATLAB function, which can be used without any modifications.
+  
 ## Implemented Baselines
 
 - [Polytopic Tube MPC](https://link.springer.com/book/10.1007/978-3-319-24853-0) – implemented following **Chapter 5** of:
