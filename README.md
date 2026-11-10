@@ -9,8 +9,9 @@ Quartullo, R., Garulli, A., and Leomanni, M. (2026). *Robust Model Predictive Co
 
 - [CORA](https://it.mathworks.com/matlabcentral/fileexchange/68551-cora) – for interval matrices operations
 
-## Recommended solver
-- [Mosek](https://www.mosek.com/)
+## Recommended Solver
+
+- [Mosek](https://www.mosek.com/) - The runtime evaluation in the paper has been performed using Mosek. However, the code runs also without it. In the case the user does not have a Mosek licence, quadprog will refer to the MATLAB embedded function (without any modification)
 
 ## Implemented Baselines
 
