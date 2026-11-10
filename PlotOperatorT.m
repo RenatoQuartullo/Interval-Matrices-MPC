@@ -70,7 +70,7 @@ plot(interval(BTIM)*e1, [1 2], 'EdgeColor', rgb('SeaGreen'), 'LineWidth', 2);
 plot(interval(IBM)*e1, [1 2], 'EdgeColor', rgb('Coral'), 'LineWidth', 2);
 axis([0.7 1.6 -0.2 0.3])
 box on
-set(gca,'FontSize',15)
+set(gca,'FontSize',10)
 
 % Secondo subplot
 ax2 = nexttile;
@@ -80,16 +80,24 @@ plot(MatIntTimesMatZon(I,M)*e2,[1 2], 'LineStyle', '--', 'EdgeColor', rgb('Light
 plot(interval(BTIM)*e2, [1 2], 'EdgeColor', rgb('SeaGreen'), 'LineWidth', 2);
 plot(interval(IBM)*e2, [1 2], 'EdgeColor', rgb('Coral'), 'LineWidth', 2);
 axis([0.2 1 0.3 0.9])
-set(gca,'FontSize',15)
-
+box on
+set(gca,'FontSize',10)
+set(gca, 'Position',[0.5400    0.1993    0.4050    0.7590])
 % Legenda condivisa
-labels = { ...
-    '$\mathcal{I}\mathcal{M}e_i$', ...
-    '$\mathrm{T}_{\mathcal{I}}(\mathcal{M})e_i$', ...
-    '$\mathrm{B}(\mathrm{T}_{\mathcal{I}}(\mathcal{M}))e_i$', ...
-    '$\mathcal{I}\star\mathrm{B}(\mathcal{M})e_i$'};
-lgd = legend(ax1, labels, 'Interpreter','latex','FontSize',15);
+% labels = { ...
+%     '$\mathcal{I}\mathcal{M}e_i$', ...
+%     '$\mathrm{T}_{\mathcal{I}}(\mathcal{M})e_i$', ...
+%     '$\mathrm{B}(\mathrm{T}_{\mathcal{I}}(\mathcal{M}))e_i$', ...
+%     '$\mathcal{I}\star\mathrm{B}(\mathcal{M})e_i$'};
+% lgd = legend(ax1, labels, 'Interpreter','latex','FontSize',15);
+% lgd.Layout.Tile = 'south';
+% lgd.NumColumns = 2;
+
+lgd = legend(ax1, ...
+    {'LEGENDLEGEND1','LEGENDLEGEND2','LEGENDLEGEND3','LEGENDLEGEND4'}, ...
+    'Interpreter','none', ...
+    'FontSize',10, ...
+    'NumColumns',2);
 
 lgd.Layout.Tile = 'south';
-lgd.NumColumns = 2;
 

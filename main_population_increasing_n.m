@@ -52,8 +52,8 @@ for in = 1:nexp
     [~,m] = size(Bhat);
     xref = ones(n,1);
     uref = pinv(Bhat)*(eye(n)-Ahat)*xref;
-    xmax = 1.5*ones(n,1)*10000;
-    umax = 0.3*ones(size(uref))*1000-uref;
+    xmax = 1.5*ones(n,1);
+    umax = 0.3*ones(size(uref))-uref;
     x0 = repmat((-1:2/nx0:1),[n,1]);
     Q = eye(n);
     R = eye(m);
@@ -63,8 +63,8 @@ for in = 1:nexp
     
     DeltaA = zeros(n);
     DeltaB = zeros(n,m);
-    DeltaA(1,1:2) = 0.0*f{in}(1:2);
-    DeltaA(end,end-1:end) = 0.0*s{in}(end-1:end);
+    DeltaA(1,1:2) = 0.08*f{in}(1:2);
+    DeltaA(end,end-1:end) = 0.03*s{in}(end-1:end);
     Delta = [DeltaA DeltaB];
 
     % State/input constraints
@@ -152,7 +152,6 @@ for in = 1:nexp
     [Hineq_PTMPC,gineq_PTMPC,Heq_PTMPC,geq_PTMPC,Qqp_PTMPC] = OPmatrices_PTMPC_lowComplexity(N_PTMPC, Phi_tilde_p, Phi_tilde_m, B_tilde, FGK_p, FGK_m, G, h, V, alpha_N, Wp);
 
     % Calculate solution for multiple x0
-    % addpath('/Users/renatoquartullo/mosek/11.1/toolbox/r2022b', '-begin')
     for ix = 1:nx0
         x_PTMPC = x0(:,ix);
         gineq_PTMPC_k = [gineq_PTMPC; V*x0(:,ix); -V*x0(:,ix)];
@@ -166,7 +165,6 @@ for in = 1:nexp
     end
 
 
-
     %% IM-MPC
     ID = intervalMatrix(zeros(n,m+n),Delta);
     IDK = ID*[eye(n); K];
@@ -175,7 +173,6 @@ for in = 1:nexp
         [Hineq{i},gineq{i},Heq{i},geq{i},geqDyn{i},cJ{i},LB{i},UB{i}] = OPmatrices(Ahat,Bhat,i,Bc,Bsup,BKc,BKsup,X,U,Xf,K,'QP');
     end
 
-    % addpath('/Applications/MATLAB_R2025b.app/toolbox/optim/optim/', '-begin')
     % MPC Iteration
     for ix = 1:nx0
         tic_IMMPC = tic;
@@ -189,31 +186,20 @@ for in = 1:nexp
     end
     
 end
-% save('data/population_runtimes.mat','toc_IMMPC','toc_PTMPC','n_unc')
+% save('data/population_runtimes.mat','toc_IMMPC','toc_PTMPC','nexp')
 
 %% PLOT
-% Too see the paper results --> load data/population_runtimes.mat
+% Too see the paper results --> load data/population_runtimes_increasing_n.mat
+nmstate = nstate + [4 10 16 22];
 figure
 hold on
-plot(nstate, mean(toc_IMMPC,2),'-*','LineWidth',1.5)
-plot(nstate, mean(toc_PTMPC,2),'-s','Color',rgb('Crimson'),'LineWidth',1.5)
+plot(nmstate, mean(toc_IMMPC,2),'-*','LineWidth',1.5)
 load data/population_increasing_n_SLS.mat
-plot(2:nexp, toc_SLSMPC(2:nexp),'-s','Color',rgb('SeaGreen'),'LineWidth',1.5)
-xlabel('Number  of uncertain entries of $A$','Interpreter','latex')
-xlim([1 n_unc])
+plot(nmstate, toc_SLSMPC,'-s','Color',rgb('SeaGreen'),'LineWidth',1.5)
+plot(nmstate, mean(toc_PTMPC,2),'-s','Color',rgb('Crimson'),'LineWidth',1.5)
+xlabel('$n+m$','Interpreter','latex')
 ylabel('Average CPU time [s]', 'Interpreter','latex')
-grid on
-legend('IM-MPC','SLS-MPC','PT-MPC', 'Interpreter','latex')
-box on
-
-figure
-hold on
-plot(1:n_unc, n_ineq(:,end)+n_eq(:,end),'-*','LineWidth',1.5)
-plot(1:n_unc, ncostr_SLSMPC,'-s','Color',rgb('SeaGreen'),'LineWidth',1.5)
-plot(1:n_unc, n_ineq_PTMPC+n_eq_PTMPC,'-s','Color',rgb('Crimson'),'LineWidth',1.5)
-xlabel('Number  of uncertain entries of $[A \quad B]$','Interpreter','latex')
-xlim([1 n_unc])
-ylabel('Numeber of constraints', 'Interpreter','latex')
+xlim([nmstate(1) nmstate(end)])
 grid on
 legend('IM-MPC','SLS-MPC','PT-MPC', 'Interpreter','latex')
 box on

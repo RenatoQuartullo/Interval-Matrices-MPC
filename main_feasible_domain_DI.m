@@ -4,6 +4,7 @@ close all
 
 addpath data
 addpath tools
+oPt.Display = 'off';
 
 % Double Integrator System
 Ahat = [1 1; 0 1];
@@ -72,19 +73,18 @@ IDelta = intervalMatrix(zeros(n,m+n),Delta);
 IDK = IS*[eye(n); K];
 [Bc,Bsup,BKc,BKsup] = PreComputeIntervalMatrices(IDK,IDelta,K,Nmax);
 for i = 1:Nmax
-    [Hineq{i},gineq{i},Heq{i},geq{i},geqDyn{i},cJ{i},LB{i},UB{i}] = OPmatrices(Ahat, Bhat, i, Bc, Bsup, BKc, BKsup, X, U, Xf, K, 'QP');
+    [Hineq{i},gineq{i},Heq{i},geq{i},geqDyn{i},cJ{i},LB{i},UB{i}] = OPmatrices(Ahat, Bhat, i, Bc, Bsup, BKc, BKsup, X, U, Xf, K, 'LP');
 end
 
 % Calculate feasible domain 
 N = nan(nx0,1);                             % N collect all optimal horizon lengths
 toc_IMMPC = zeros(nx0,1);
 feasibleX0 = true(nx0,1);
-oPt.Display = 'off';
 for i = 1:nx0
     disp(i)
     % Solve IM-MPC problem
     tic_OP = tic;
-    [sol,JN] = SolveIMMPC(x0(:,i), Nmax, Hineq, gineq, Heq, geq, geqDyn, cJ, LB, UB, gamma, 'QP', oPt);
+    [sol,JN] = SolveIMMPC(x0(:,i), Nmax, Hineq, gineq, Heq, geq, geqDyn, cJ, LB, UB, gamma, 'feasibility', oPt);
     toc_IMMPC(i) = toc(tic_OP);
     [~,N(i)] = min(JN);
 
@@ -123,13 +123,14 @@ feasibleX0PTMPC = true(nx0,Nmax);
 toc_PTMPC = nan(nx0,Nmax);  
 NminFeasible = Nmax*ones(nx0,1);
 for i = 1:nx0
-
+    disp(i)
     for j = 1:Nmax
 
         % Solve PT-MPC problem
         gineqPTMPC_k = [galpha0PTMPC{j}*x0(:,i); gineqPTMPC{j}];
         tic_PTMPC = tic;
-        [~,~,flag] = quadprog(QqpPTMPC{j}, [], HineqPTMPC{j}, gineqPTMPC_k, HeqPTMPC{j}, geqPTMPC{j},[],[],[],oPt);
+        % [~,~,flag] = quadprog(QqpPTMPC{j}, [], HineqPTMPC{j}, gineqPTMPC_k, HeqPTMPC{j}, geqPTMPC{j},[],[],[],oPt);
+        [~,~,flag] = linprog(zeros(size(HineqPTMPC{j},2),1), HineqPTMPC{j}, gineqPTMPC_k, HeqPTMPC{j}, geqPTMPC{j},[],[],oPt);
         toc_PTMPC(i,j) = toc(tic_PTMPC);
 
         % Check initial feasibility
@@ -155,14 +156,14 @@ end
 figure
 hold on
 load data/FD_SLSMPC.mat
-plot(FD_IMMPC, 'alpha',0.2, 'color','blue','EdgeColor','b')
-plot(FD_SLSMPC, 'alpha',0.2, 'color','green','LineStyle','--','EdgeColor','g')
-plot(FD_PTMPC, 'alpha',0.3, 'color','red','EdgeColor','r')
+plot(FD_IMMPC, [1 2], 'FaceColor', 'blue', 'FaceAlpha', 0.2, 'EdgeColor', 'b')
+plot(FD_SLSMPC, [1 2], 'FaceColor', 'green', 'FaceAlpha', 0, 'LineStyle', '--', 'EdgeColor', 'g')
+plot(FD_PTMPC, [1 2], 'FaceColor', 'red', 'FaceAlpha', 0.2, 'EdgeColor', 'r')
 load data/FD_OTMPC.mat
-plot(FD_OTMPC, 'alpha',0.5, 'color','yellow','LineStyle','--','EdgeColor','yellow')
+plot(FD_OTMPC, [1 2], 'FaceColor', 'yellow', 'FaceAlpha', 0.2, 'LineStyle', '--', 'EdgeColor', 'y')
 xlabel('$x_1$','interpreter','latex')
 ylabel('$x_2$','interpreter','latex')
-legend('IM-MPC','SLS-MPC','PT-MPC','OT-MPC (N = 3)','interpreter','latex')
-axis([-12.5 20 -4.5 4.5])
+legend('IM-MPC','SLS-MPC','PT-MPC','OT-MPC','interpreter','latex')
+axis([-12.5 15 -4.5 4.5])
 box on
 

@@ -1,5 +1,5 @@
 clear 
-% clc
+clc
 close all
 
 addpath tools
@@ -55,8 +55,10 @@ posRand_not0 = find(DeltaAll ~= 0);
 n_unc = length(posRand_not0);
 toc_PTMPC = nan(n_unc,nx0);
 toc_IMMPC = nan(n_unc,nx0);
-toc_IMMPC_QP = nan(n_unc,nx0);
-tocAlpha = nan(n_unc,nx0);
+n_ineq_IMMPC = nan(n_unc,1);
+n_eq_IMMPC = nan(n_unc,1);
+n_ineq_PTMPC = nan(n_unc,1);
+n_eq_PTMPC = nan(n_unc,1);
 N = zeros(n_unc,nx0);
 N_QP = zeros(n_unc,nx0);
 oPt.Display = 'off';
@@ -86,7 +88,7 @@ for iu = 1:n_unc
     %     break
     % end
 
-    % Compute terminal set (low-complexity) 
+    % Compute terminal set
     [W,~] = schur(AKhat,'real');
     V = inv(W);
     alpha_N = FindAlphaRPIParallelotope(ABK_vertices,V,W,F,G,K,h,'non-symmetric');
@@ -96,10 +98,10 @@ for iu = 1:n_unc
     end
     Xf.A = [V;-V];
     Xf.b = [alpha_N(1:n); alpha_N(n+1:end)];  
-
-    %% PT-MPC (low complexity - parallelotopic shape) -> quadprog of MOSEK SUGGESTED
     
-    % % Terminal weight
+    %% PT-MPC
+    
+    % Terminal weight
     E = [eye(m), zeros(m,(N_PTMPC-1)*m)];
     M = [zeros(m*N_PTMPC,m), [eye(m*(N_PTMPC-1)); zeros(m,m*(N_PTMPC-1))]];
     Psi = [AKhat, Bhat*E; zeros(m*N_PTMPC,n) M];
@@ -107,29 +109,16 @@ for iu = 1:n_unc
     Wp = dlyap(Psi',Qhat);
 
     % Pre-compute all needed matrices
-    nv = size(IS_vertices,3);
-    Phi_tilde = zeros(n,n,nv);
-    Phi_tilde_m = zeros(n,n,nv);
-    Phi_tilde_p = zeros(n,n,nv);
-    B_tilde = zeros(n,m,nv);
-    for i = 1:nv
-        Phi_tilde(:,:,i) = V*ABK_vertices(:,:,i)*W;
-        Phi_tilde_p(:,:,i) = max(Phi_tilde(:,:,i),0);
-        Phi_tilde_m(:,:,i) = max(-Phi_tilde(:,:,i),0);
-        B_tilde(:,:,i) = V*B_vertices(:,:,i);
-    end
-    F_tilde = F*W;
-    K_tilde = K*W;
-    FGK_p = max(F_tilde+G*K_tilde, 0);
-    FGK_m = max(-(F_tilde+G*K_tilde), 0);
-    [Hineq_PTMPC,gineq_PTMPC,Heq_PTMPC,geq_PTMPC,Qqp_PTMPC] = OPmatrices_PTMPC_lowComplexity(N_PTMPC, Phi_tilde_p, Phi_tilde_m, B_tilde, FGK_p, FGK_m, G, h, V, alpha_N, Wp);
+    Hc = ComputeHc_PTMPC(Xf.A,F,G,K);
+    H = ComputeH_PTMPC(Xf.A,ABK_vertices);
+    [Hineq_PTMPC,gineqPTMPC,galpha0PTMPC,Heq_PTMPC,geq_PTMPC,Qqp_PTMPC] = OPmatrices_PTMPC(N_PTMPC, H, Hc, Xf.A, B_vertices, G, Wp, Xf.b);
 
     % Calculate solution for multiple x0
     for ix = 1:nx0
         x_PTMPC = x0(:,ix);
-        gineq_PTMPC_k = [gineq_PTMPC; V*x0(:,ix); -V*x0(:,ix)];
+        gineq_PTMPC_k = [galpha0PTMPC*x0(:,i); gineqPTMPC];
         tic_PTMPC = tic;
-        [~,~,flag_PTMPC] = quadprog((Qqp_PTMPC+Qqp_PTMPC')/2,zeros(size(Qqp_PTMPC,2),1),Hineq_PTMPC,gineq_PTMPC_k,Heq_PTMPC,geq_PTMPC,[],[],[],oPt);
+        [~,~,flag_PTMPC] = quadprog((Qqp_PTMPC+Qqp_PTMPC')/2, zeros(size(Qqp_PTMPC,2),1),Hineq_PTMPC,gineq_PTMPC_k,Heq_PTMPC,geq_PTMPC,[],[],[],oPt);
         toc_PTMPC(iu,ix) = toc(tic_PTMPC);
         if flag_PTMPC ~= 1
             disp('infeasible PT-MPC')
@@ -137,6 +126,9 @@ for iu = 1:n_unc
         end       
     end
 
+    % Calculate number of in/equalities of OCP
+    n_ineq_PTMPC(iu) = size(Hineq_PTMPC,1);
+    n_eq_PTMPC(iu) = size(Heq_PTMPC,1);
     
     %% IM-MPC
     ID = intervalMatrix(zeros(n,m+n),Delta);
@@ -157,18 +149,22 @@ for iu = 1:n_unc
         end
         toc_IMMPC(iu,ix) = toc(tic_IMMPC);
     end
+
+    % Calculate number of in/equalities of OCP (calculated for the maximum N)
+    n_ineq_IMMPC(iu) = size(Hineq{Nmax},1);
+    n_eq_IMMPC(iu) = size(Heq{Nmax},1);
     
 end
-% save('data/population_runtimes.mat','toc_IMMPC','toc_PTMPC','n_unc')
+% save('data/population_runtimes.mat','toc_IMMPC','toc_PTMPC','n_ineq_IMMPC','n_eq_IMMPC','n_ineq_PTMPC','n_ineq_PTMPC','n_unc')
 
 %% PLOT
 % Too see the paper results --> load data/population_runtimes.mat
 figure
 hold on
 plot(1:n_unc, mean(toc_IMMPC,2),'-*','LineWidth',1.5)
-plot(1:n_unc, mean(toc_PTMPC,2),'-s','Color',rgb('Crimson'),'LineWidth',1.5)
 load data/population_runtimes_SLSMPC.mat
 plot(1:n_unc, toc_SLSMPC,'-s','Color',rgb('SeaGreen'),'LineWidth',1.5)
+plot(1:n_unc, mean(toc_PTMPC,2),'-s','Color',rgb('Crimson'),'LineWidth',1.5)
 xlabel('Number  of uncertain entries of $A$','Interpreter','latex')
 xlim([1 n_unc])
 ylabel('Average CPU time [s]', 'Interpreter','latex')
@@ -178,7 +174,7 @@ box on
 
 figure
 hold on
-plot(1:n_unc, n_ineq(:,end)+n_eq(:,end),'-*','LineWidth',1.5)
+plot(1:n_unc, n_ineq_IMMPC+n_eq_IMMPC,'-*','LineWidth',1.5)
 plot(1:n_unc, ncostr_SLSMPC,'-s','Color',rgb('SeaGreen'),'LineWidth',1.5)
 plot(1:n_unc, n_ineq_PTMPC+n_eq_PTMPC,'-s','Color',rgb('Crimson'),'LineWidth',1.5)
 xlabel('Number  of uncertain entries of $[A \quad B]$','Interpreter','latex')

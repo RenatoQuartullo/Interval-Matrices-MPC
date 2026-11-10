@@ -12,7 +12,7 @@ function [sol,J] = SolveIMMPC(xk,Nmax,Hineq,gineq,Heq,geq,geqDyn,cJ,LB,UB,gamma,
         elseif strcmp(OP,'QP')
             [sol{N},fv,flag] = quadprog(cJ{N},zeros(size(cJ{N},2),1),Hineq{N},gineq{N},Heq{N},geqk,LB{N},UB{N},[],oPt);
         else
-            [sol{N},fv,flag] = linprog([],Hineq{N},gineq{N},Heq{N},geqk,LB{N},UB{N},oPt);
+            [sol{N},fv,flag] = linprog(zeros(size(Hineq{N},2),1),Hineq{N},gineq{N},Heq{N},geqk,LB{N},UB{N},oPt);
         end
         if flag ~= 1
             fv = inf;

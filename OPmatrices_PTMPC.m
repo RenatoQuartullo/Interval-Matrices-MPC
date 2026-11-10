@@ -20,17 +20,23 @@ function [Hineq,gineq,galpha0,Heq,geq,Qqp] = OPmatrices_PTMPC(N, H, Hc, V, B, G,
     Hs0 = [-eye(nv), zeros(nv, lenSol-n-nv), V];
     gs0 = zeros(nv,1);
 
-    % dynamic constraint
-    Hdyn = [];
+    % dynamic constraints
+    Hdyn = zeros(nv*N*nvert, lenSol);
+    VB = zeros(nv,m,nvert);
+    for j = 1:nvert
+        VB(:,:,j) = V*B(:,:,j);
+    end
+    I = eye(nv);
     for j = 1:nvert
         for i = 1:N
-            Hdyni = zeros(nv,lenSol);
-            Hdyni(:,nv*(i-1)+1:nv*i) = H(:,:,j);
-            Hdyni(:,nv*i+1:nv*i+nv) = -eye(nv);
-            Hdyni(:,nv*(N+1)+(i-1)*m+1:nv*(N+1)+i*m) = V*B(:,:,j);
-            Hdyn = [Hdyn; Hdyni];
+            rows = ((j-1)*N + i-1)*nv + (1:nv);
+            Hdyn(rows, nv*(i-1)+(1:nv)) = H(:,:,j);
+            Hdyn(rows, nv*i+(1:nv)) = -I;
+            Hdyn(rows, nv*(N+1)+(i-1)*m+(1:m)) = VB(:,:,j);
         end
     end
+  
+    Hdyn = sparse(Hdyn);
     gdyn = zeros(nv*N*nvert,1);
 
     % Terminal constraint 

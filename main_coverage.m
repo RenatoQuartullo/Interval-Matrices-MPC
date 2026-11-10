@@ -6,7 +6,7 @@ addpath tools
 addpath data
 
 % import maximal robust invariant sets computed from [1] and pre-saved gains K
-load 'data/RIS_coverage_CORA.mat'
+load 'data/RIS_coverage.mat'
 load data/K_presaved.mat
 
 % System
@@ -40,7 +40,6 @@ delta_A = 0.05:0.05:0.6;
 %% Begin calculating coverage
 feasibleN_IMMPC = nan(Nmax, 100, length(delta_A));
 coverage_IMMPC = zeros(length(delta_A),1);
-coverage_PTMPC_N1 = zeros(length(delta_A),1);           % NEW
 coverage_PTMPC_N3 = zeros(length(delta_A),1);
 coverage_PTMPC_N10 = zeros(length(delta_A),1);
 oPt.Display = 'off';
@@ -56,7 +55,7 @@ for ii = 1:length(delta_A)
 
     % Calculate K
     % K = KStableVertices(A_vertices,B_vertices);         % Uncomment for recompute K
-    K = Kall(ii,:);                                     % Uncomment for pre-computed K
+    K = Kall(ii,:);                                     % Uncomment for pre-computed K (in data/K_presaved.mat)
     ABK_vertices = pagemtimes(IS_vertices,[eye(n);K]);
     AKhat = Ahat + Bhat*K;
 
@@ -103,7 +102,7 @@ for ii = 1:length(delta_A)
 
         % Solve PT-MPC problem
         gineq_k = [galpha0_PTMPC*x0(:,i); gineq_PTMPC];
-        solPTMPC = linprog([],Hineq_PTMPC,gineq_k,Heq_PTMPC,geq_PTMPC,[],[],oPt);
+        solPTMPC = linprog(zeros(size(Hineq_PTMPC,2),1),Hineq_PTMPC,gineq_k,Heq_PTMPC,geq_PTMPC,[],[],oPt);
         if isempty(solPTMPC)
             feasibleX0PTMPC(i) = false;
         end
@@ -125,23 +124,7 @@ for ii = 1:length(delta_A)
         end
     end
     x0feasiblePTMPC = x0(:,feasibleX0PTMPC);
-    coverage_PTMPC_N1(ii) = size(x0feasiblePTMPC,2)/nx0;
-
-    % N = 1
-    N_PTMPC = 1;
-    [Hineq_PTMPC,gineq_PTMPC,galpha0_PTMPC,Heq_PTMPC,geq_PTMPC] = OPmatrices_PTMPC(N_PTMPC, H, Hc, Xf.A, B_vertices, G, [], Xf.b);
-    feasibleX0PTMPC = true(nx0,1);
-    for i = 1:nx0
-
-        % Solve PT-MPC problem
-        gineq_k = [galpha0_PTMPC*x0(:,i); gineq_PTMPC];
-        solPTMPC = linprog([],Hineq_PTMPC,gineq_k,Heq_PTMPC,geq_PTMPC,[],[],oPt);
-        if isempty(solPTMPC)
-            feasibleX0PTMPC(i) = false;
-        end
-    end
-    x0feasiblePTMPC = x0(:,feasibleX0PTMPC);
-    coverage_PTMPC_N1(ii) = size(x0feasiblePTMPC,2)/nx0;
+    coverage_PTMPC_N3(ii) = size(x0feasiblePTMPC,2)/nx0;
 
 end
 % save('data/coverage.mat','coverage_PTMPC_N3','coverage_PTMPC_N10','delta_A','coverage_IMMPC')
@@ -153,26 +136,38 @@ figure
 plot(delta_A,coverage_IMMPC,'-*','LineWidth',1.5,'MarkerSize',10)
 hold on
 load data/coverage_SLSMPC.mat
-% plot(delta_A,coverage_SLSMPC_N1,'s-.','Color',rgb('Crimson'),'LineWidth',1.5)
 plot(delta_A,coverage_SLSMPC_N3,'s-','Color',rgb('SeaGreen'),'LineWidth',1.5)
 plot(delta_A,coverage_SLSMPC_N10,'s--','Color',rgb('SeaGreen'),'LineWidth',1.5)
 load data/coverage_OTMPC.mat
-% plot(delta_A,coverage_OTMPC_N1,'s-.','Color',rgb('Crimson'),'LineWidth',1.5)
 plot(delta_A,coverage_OTMPC_N3,'s-','Color',rgb('Gold'),'LineWidth',1.5)
-% plot(delta_A,coverage_PTMPC_N1,'s-.','Color',rgb('Crimson'),'LineWidth',1.5)
 plot(delta_A,coverage_PTMPC_N3,'s-','Color',rgb('Crimson'),'LineWidth',1.5)
 plot(delta_A,coverage_PTMPC_N10,'s--','Color',rgb('Crimson'),'LineWidth',1.5)
 legend('IM-MPC','SLS-MPC (N=3)','SLS-MPC (N=10)','OT-MPC (N=3)','PT-MPC (N = 3)','PT-MPC (N = 10)','interpreter','latex')
-% legend('IM-MPC','SLS-MPC (N=1)','SLS-MPC (N=3)','SLS-MPC (N=10)','OT-MPC (N=1)','OT-MPC (N=3)','PT-MPC (N = 1)','PT-MPC (N = 3)','PT-MPC (N = 10)','interpreter','latex')
 xlabel('$\delta$','Interpreter','latex')
 xlim([delta_A(1) delta_A(end)])
 grid on
 
-% Analyze feasible N for IMMPC
-for ii = 1:length(delta_A)
-    maxN(ii,:) = max(feasibleN_IMMPC(:,:,ii) .* (isfinite(feasibleN_IMMPC(:,:,ii))), [], 1);
-end
-mean(maxN, 2, 'omitnan')
+%% Analyze feasible N for IMMPC
+% for ii = 1:length(delta_A)
+%     maxN(ii,:) = max(feasibleN_IMMPC(:,:,ii) .* (isfinite(feasibleN_IMMPC(:,:,ii))), [], 1);
+% end
+% mean(maxN, 2, 'omitnan')
+% 
+% for ii = 1:length(delta_A)
+%     less3(ii) = length(find(maxN(ii,:)<3))/length(find(~isnan(maxN(ii,:))));
+% end
+% 
+% more3 = 1-less3;
+% 
+% load data/coverage_tubesABCD.mat
+% figure
+% hold on
+% for i = 1:4
+%     plot(delta_A,best_coverage(i,:))
+% end
+% plot(delta_A,more3,'LineWidth',2)
+% legend('A','B','C','D','IMMPC(N>2)','interpreter','latex')
+
 
 % [1] S. Chen, V. M. Preciado, M. Morari, and N. Matni, "Robust model predictive control with polytopic model
 % uncertainty through system level synthesis," Automatica, vol. 162, p. 111431, 2024.
