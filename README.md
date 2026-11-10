@@ -7,10 +7,10 @@ Quartullo, R., Garulli, A., and Leomanni, M. (2026). *Robust Model Predictive Co
 
 ## Required Toolboxes
 
-- [MPT3](https://www.mpt3.org/) – for polyhedron operations  
-- [CORA](https://it.mathworks.com/matlabcentral/fileexchange/68551-cora) – for interval matrices operations  
-- [CVX](https://cvxr.com/cvx/) – for dealing with Linear Matrix Inequalities (LMI).  
-  Not needed for replicating the paper results; all LMI results are already available in the data.
+- [CORA](https://it.mathworks.com/matlabcentral/fileexchange/68551-cora) – for interval matrices operations
+
+## Recommended solver
+- [Mosek](https://www.mosek.com/)
 
 ## Implemented Baselines
 
